@@ -10,21 +10,6 @@
 (defun make-local-path (file)
   (merge-pathnames (pathname file) (current-directory)))
 
-(if (not (probe-file (make-local-path *file-config*)))
-    (progn
-      (format *standard-output* "Missing config file: ~A." *file-config*)
-      (quit)))
-
-(load (make-local-path *file-config*))
-
-(defvar *template* (let ((in (open (make-local-path *template-file*)))
-                         (html nil))
-                     (loop for line = (read in nil)
-                           while line do
-                           (setf html (cons line html)))
-                     (close in)
-                     html))
-
 ;; from who.lisp
 (defun apply-to-tree (function test tree)
   (declare (optimize speed space))
@@ -40,31 +25,45 @@ only leaves) which pass TEST."
        (apply-to-tree function test (cdr tree))))
     (t tree)))
 
+(defun run-terrace ()
+  (if (not (probe-file (make-local-path *file-config*)))
+      (progn
+        (format *standard-output* "Missing config file: ~A." *file-config*)
+        (quit)))
 
-(mapcar
- (lambda (file)
-   (let ((in (open file))
-         (out (open
-               (make-pathname :type "htm" :defaults file)
-               :direction :output :if-exists :supersede))
-         (markup ""))
-     (loop for line = (read-line in nil)
-           while line do
-           (setf markup (concatenate 'string markup line)))
-     (close in)
-     (eval (cl-who:tree-to-commands
-            (apply-to-tree
-             (lambda (x)
-               `(cl-who:str
-                 (let ((x
-                        ,(with-output-to-string
-                           (s)
-                           (cl-markdown:markdown markup :stream s))))
-                   x)))
-             (lambda (x) (eq x 'content))
-             *template*)
-            out))
-     (close out)))
- (directory (make-local-path "*.pt")))
+  (load (make-local-path *file-config*))
 
-(quit)
+  (let ((*template* (let ((in (open (make-local-path *template-file*)))
+                          (html nil))
+                      (loop for line = (read in nil)
+                            while line do
+                            (setf html (cons line html)))
+                      (close in)
+                      html)))
+    (mapcar
+     (lambda (file)
+       (let ((in (open file))
+             (out (open
+                   (make-pathname :type "htm" :defaults file)
+                   :direction :output :if-exists :supersede))
+             (markup ""))
+         (loop for line = (read-line in nil)
+               while line do
+               (setf markup (concatenate 'string markup line)))
+         (close in)
+         (eval (cl-who:tree-to-commands
+                (apply-to-tree
+                 (lambda (x)
+                   `(cl-who:str
+                     (let ((x
+                            ,(with-output-to-string
+                               (s)
+                               (cl-markdown:markdown markup :stream s))))
+                       x)))
+                 (lambda (x) (eq x 'content))
+                 *template*)
+                out))
+         (close out)))
+     (directory (make-local-path "*.pt")))))
+
+(ccl::save-application "terrace" :toplevel-function (lambda () (run-terrace) (ccl::quit)) :prepend-kernel t)
