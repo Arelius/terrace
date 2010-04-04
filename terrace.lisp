@@ -2,6 +2,7 @@
 ;; See the LICENSE file for usage, modification, and distribution terms.
 (require 'cl-who)
 (require 'cl-markdown)
+(require 'css-lite)
 
 (defparameter *file-config* "config.ter")
 (defparameter *html-extension* "html")
@@ -55,13 +56,23 @@ only leaves) which pass TEST."
          (eval (cl-who:tree-to-commands
                 (apply-to-tree
                  (lambda (x)
-                   `(cl-who:str
-                     (let ((x
-                            ,(with-output-to-string
-                               (s)
-                               (cl-markdown:markdown markup :stream s))))
-                       x)))
-                 (lambda (x) (eq x 'content))
+                   (cond
+                    ((eq (car x) 'content)
+                     `(cl-who:str
+                       ,(with-output-to-string
+                          (s)
+                          (cl-markdown:markdown markup :stream s))))
+                    ((eq (car x) 'css)
+                     `(cl-who:str
+                       (css-lite:css-string ,@(cdr x))))
+                    ((eq (car x) 'inline-css)
+                     `(css-lite:inline-css ,@(cdr x)))))
+                 (lambda (x) (and
+                         (consp x)
+                         (or
+                          (eq (car x) 'content)
+                          (eq (car x) 'css)
+                          (eq (car x) 'inline-css))))
                  *template*)
                 out))
          (close out)))
