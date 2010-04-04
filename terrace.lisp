@@ -4,6 +4,7 @@
 (require 'cl-markdown)
 
 (defparameter *file-config* "config.ter")
+(defparameter *html-extension* "html")
 
 (defparameter *template-file* nil)
 
@@ -44,7 +45,7 @@ only leaves) which pass TEST."
      (lambda (file)
        (let ((in (open file))
              (out (open
-                   (make-pathname :type "htm" :defaults file)
+                   (make-pathname :type *html-extension* :defaults file)
                    :direction :output :if-exists :supersede))
              (markup ""))
          (loop for line = (read-line in nil)
