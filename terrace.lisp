@@ -12,21 +12,6 @@
 (defun make-local-path (file)
   (merge-pathnames (pathname file) (current-directory)))
 
-;; from who.lisp
-(defun apply-to-tree (function test tree)
-  (declare (optimize speed space))
-  (declare (type function function test))
-  "Apply FUNCTION recursively to all elements of the tree TREE \(not
-only leaves) which pass TEST."
-  (cond
-    ((funcall test tree)
-      (funcall function tree))
-    ((consp tree)
-      (cons
-       (apply-to-tree function test (car tree))
-       (apply-to-tree function test (cdr tree))))
-    (t tree)))
-
 (defun run-terrace ()
   (if (not (probe-file (make-local-path *file-config*)))
       (progn
@@ -53,8 +38,8 @@ only leaves) which pass TEST."
                while line do
                (setf markup (concatenate 'string markup line)))
          (close in)
-         (eval (cl-who:tree-to-commands
-                (apply-to-tree
+         (eval (cl-who::tree-to-commands
+                (cl-who::apply-to-tree
                  (lambda (x)
                    (cond
                     ((eq (car x) 'content)
